@@ -8,21 +8,21 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/dxguerrero/snippr/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type snippet struct {
-	ID int `json:"id"`
+	ID       int    `json:"id"`
 	Language string `json:"language"`
-	Code string `json:"code"`
+	Code     string `json:"code"`
 }
 
-var snippets []snippet  
+var snippets []snippet
 
 func main() {
 	router := gin.Default()
 	readFile()
-
 
 	router.GET("/snippet", getSnippets)
 	router.GET("/snippet/:id", getSnippetByID)
@@ -72,15 +72,28 @@ func postSnippet(c *gin.Context) {
 		return
 	}
 
+	encryptedCode, err := utils.GetAESEncrypted(newSnippet.Code)
+	newSnippet.Code = encryptedCode
+	fmt.Println(encryptedCode)
+
+	if err != nil {
+		fmt.Println("Error during encryption", err)
+	}
+
 	snippets = append(snippets, newSnippet)
 	c.IndentedJSON(http.StatusCreated, newSnippet)
 }
 
 func getSnippetByID(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	for _, s := range snippets {
-		if fmt.Sprintf("%d", s.ID) == id { 
+		if fmt.Sprintf("%d", s.ID) == id {
+			decryptedCode, err := utils.GetAESDecrypted(s.Code)
+			if err != nil {
+				panic(err)
+			}
+			s.Code = string(decryptedCode)
 			c.IndentedJSON(http.StatusOK, s)
 			return
 		}
