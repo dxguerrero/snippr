@@ -1,28 +1,30 @@
 package main
 
 import (
-	"github.com/dxguerrero/snippr/contollers"
-	"github.com/dxguerrero/snippr/middleware"
-	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+
+
+	"github.com/joho/godotenv"
+
+	"github.com/dxguerrero/snippr/platform/authenticator"
+	"github.com/dxguerrero/snippr/platform/router"
 )
 
 func main() {
-	router := gin.Default()
-	controllers.ReadFile()
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Failed to load the env vars: &v", err)
+	}
 
-	protectedRoutes := router.Group("/snippet")
-	protectedRoutes.Use(middleware.AuthMiddleware())
+	auth, err := authenticator.New()
+	if err != nil {
+		log.Fatalf("Failed to initialize the authenticator: %v", err)
+	}
 
-	// Snippet routes
-	protectedRoutes.GET("/", controllers.GetSnippets)
-	protectedRoutes.GET("/:id", controllers.GetSnippetByID)
-	protectedRoutes.POST("/", controllers.PostSnippet)
+	rtr  := router.New(auth)
 
-	// User routes
-	userRoutes := router.Group("/user")
-	userRoutes.GET("/", controllers.GetUser)
-	userRoutes.POST("/", controllers.PostUser)
-	userRoutes.POST("/login", controllers.Login)
-
-	router.Run("localhost:8080")
+	log.Print("Server listening on http://localhost:8080/")
+	if err := http.ListenAndServe("0.0.0.0:8080", rtr); err != nil {
+		log.Fatalf("There was an error with the http server: %v", err)
+	}
 }
